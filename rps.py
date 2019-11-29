@@ -37,9 +37,9 @@ def conv_cycle(states: list):
 if __name__ == "__main__":
     graph = (
         ClusteredGraphBuilder()
-        .set_graph_size(nodes=100)
+        .set_graph_size(nodes=1000)
         .with_edge_degree_distribution(uniform, low=1, high=6)
-        .with_triangle_degree_distribution(uniform, low=0, high=3)
+        .with_triangle_degree_distribution(uniform, low=0, high=2)
         .initialize_node_attributes_using({'states': list, 'next': str})
         .build()
     )
@@ -62,6 +62,17 @@ if __name__ == "__main__":
 
     conv_cycles=[]
     for node, data in graph.nodes(data=True):
-        conv_cycles.append(conv_cycle(data['states']))
-    print(conv_cycles)
-
+        data['conv_cycle'] = conv_cycle(data['states'])
+    nodesets={}
+    for node, data in graph.nodes(data=True):
+        if not (data['states'][-1],data['conv_cycle']) in nodesets:
+            nodesets[(data['states'][-1],data['conv_cycle'])]=[]
+        nodesets[(data['states'][-1],data['conv_cycle'])].append(node)
+    degreesets={}
+    for index in nodesets:
+        degreesets[index]=[]
+        for node in nodesets[index]:
+            degreesets[index].append((node, graph.degree[node]))
+    for index in degreesets:
+        plt.hist([degtuple[1] for degtuple in degreesets[index]])
+        plt.show()
