@@ -37,6 +37,33 @@ def conv_cycle(states: list):
         raise Exception("Network did not Converge! Run for more itterations")
 
 if __name__ == "__main__":
+   
+#    graph = (
+#        ClusteredGraphBuilder()
+#        .set_graph_size(nodes=100)
+#        .with_edge_degree_distribution(zipf, a=10)
+#        .with_triangle_degree_distribution(uniform, low=0, high=2)
+#        .initialize_node_attributes_using({'states': list, 'next': str})
+#        .build()
+#    )
+#    
+    
+    
+    
+    
+#if traingle is constant(3), convergence to all nodes at the same time
+    
+#    graph = (
+#        ClusteredGraphBuilder()
+#        .set_graph_size(nodes=100)
+#        .with_edge_degree_distribution(constant, k=3)
+#        .with_triangle_degree_distribution(constant, k=3)
+#        .initialize_node_attributes_using({'states': list, 'next': str})
+#        .build()
+#    )
+        
+#show you can get cycles of 6
+    
     graph = (
         ClusteredGraphBuilder()
         .set_graph_size(nodes=100)
@@ -58,6 +85,9 @@ if __name__ == "__main__":
         for node, data in graph.nodes(data=True):
             data['states'].append(data['next'])
             data['next'] = ""
+
+    nx.draw_kamada_kawai(graph)
+    plt.show()
 
     conv_cycles=[]
     for node, data in graph.nodes(data=True):
@@ -93,16 +123,16 @@ if __name__ == "__main__":
             scissors_counts.append(len(nodesets[('scissors', cycle_length)]))
         else:
             scissors_counts.append(0)
-    indices = np.arange((max_cycle_length/3)+1)
+    indices = np.arange(max_cycle_length)
     plot1 = plt.bar(indices, paper_counts)
     plot2 = plt.bar(indices, rock_counts, bottom=paper_counts)
-    plot3 = plt.bar(indices, scissors_counts, bottom=[sum(x) for x in zip(rock_counts, paper_counts)])
+    plot3 = plt.bar(indices, scissors_counts, bottom=[paper_counts[x]+rock_counts[x] for x in range(len(paper_counts))])
     plt.xticks(indices, (indices+1)*3)
     plt.xlabel("Cycle Length")
     plt.ylabel("Number of Nodes")
     plt.legend((plot1, plot2, plot3),("paper","rock","scissors"))
     plt.show()
-    
+    plt.close()
     
     degreesets={}
     max_deg=0
