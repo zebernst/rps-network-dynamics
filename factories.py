@@ -118,3 +118,68 @@ class ClusteredGraphBuilder:
                     data[k] = factory()
 
         return G
+
+
+class DorogovtsevGoltsevMendesGraphBuilder:
+    def __init__(self):
+        self.generation: Optional[int] = None
+        self.attribute_factory: Optional[dict] = None
+
+    def set_dgm_generation(self, generation: int) -> "DorogovtsevGoltsevMendesGraphBuilder":
+        self.generation = generation
+        return self
+
+    def initialize_node_attributes_using(self, data: dict) -> "DorogovtsevGoltsevMendesGraphBuilder":
+        self.attribute_factory = data
+        return self
+
+    def build(self) -> nx.Graph:
+        if self.generation is None:
+            raise nx.NetworkXError("graph builder not properly configured.")
+
+        G = nx.dorogovtsev_goltsev_mendes_graph(self.generation)
+
+        if self.attribute_factory is not None:
+            for node, data in G.nodes(data=True):
+                for k, factory in self.attribute_factory.items():
+                    data[k] = factory()
+
+        return G
+
+
+class BarabasiAlbertGraphBuilder:
+    def __init__(self):
+        self.num_nodes: Optional[int] = None
+        self.num_attachments: Optional[int] = None
+        self.attribute_factory: Optional[dict] = None
+
+    def set_graph_size(self, nodes: int) -> "BarabasiAlbertGraphBuilder":
+        self.num_nodes = nodes
+        return self
+
+    def set_num_attachments(self, attachments: int) -> "BarabasiAlbertGraphBuilder":
+        self.num_attachments = attachments
+        return self
+
+    def initialize_node_attributes_using(self, data: dict) -> "BarabasiAlbertGraphBuilder":
+        self.attribute_factory = data
+        return self
+
+    def build(self) -> nx.Graph:
+        if any(
+                attr is None
+                for attr in (
+                    self.num_nodes,
+                    self.num_attachments,
+                )
+        ):
+            raise nx.NetworkXError("graph builder not properly configured.")
+
+        G = nx.barabasi_albert_graph(n=self.num_nodes, m=self.num_attachments)
+
+        if self.attribute_factory is not None:
+            for node, data in G.nodes(data=True):
+                for k, factory in self.attribute_factory.items():
+                    data[k] = factory()
+
+        return G
