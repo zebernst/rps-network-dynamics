@@ -183,3 +183,85 @@ class BarabasiAlbertGraphBuilder:
                     data[k] = factory()
 
         return G
+
+
+class WattsStrogatzGraphBuilder:
+    def __init__(self):
+        self.num_nodes: Optional[int] = None
+        self.num_edge_connections: Optional[int] = None
+        self.rewire_prob: Optional[float] = None
+        self.attribute_factory: Optional[dict] = None
+
+    def set_graph_size(self, nodes: int) -> "WattsStrogatzGraphBuilder":
+        self.num_nodes = nodes
+        return self
+
+    def set_num_edge_connections(self, cxns: int) -> "WattsStrogatzGraphBuilder":
+        self.num_edge_connections = cxns
+        return self
+
+    def set_rewire_probability(self, prob: float) -> "WattsStrogatzGraphBuilder":
+        self.rewire_prob = prob
+        return self
+
+    def initialize_node_attributes_using(self, data: dict) -> "WattsStrogatzGraphBuilder":
+        self.attribute_factory = data
+        return self
+
+    def build(self) -> nx.Graph:
+        if any(
+                attr is None
+                for attr in (
+                    self.num_nodes,
+                    self.num_edge_connections,
+                    self.rewire_prob,
+                )
+        ):
+            raise nx.NetworkXError("graph builder not properly configured.")
+
+        G = nx.watts_strogatz_graph(n=self.num_nodes, k=self.num_edge_connections, p=self.rewire_prob)
+
+        if self.attribute_factory is not None:
+            for node, data in G.nodes(data=True):
+                for k, factory in self.attribute_factory.items():
+                    data[k] = factory()
+
+        return G
+
+
+class ErodsRenyiGraphBuilder:
+    def __init__(self):
+        self.num_nodes: Optional[int] = None
+        self.edge_prob: Optional[float] = None
+        self.attribute_factory: Optional[dict] = None
+
+    def set_graph_size(self, nodes: int) -> "ErodsRenyiGraphBuilder":
+        self.num_nodes = nodes
+        return self
+
+    def set_edge_probability(self, prob: float) -> "ErodsRenyiGraphBuilder":
+        self.edge_prob = prob
+        return self
+
+    def initialize_node_attributes_using(self, data: dict) -> "ErodsRenyiGraphBuilder":
+        self.attribute_factory = data
+        return self
+
+    def build(self) -> nx.Graph:
+        if any(
+                attr is None
+                for attr in (
+                    self.num_nodes,
+                    self.edge_prob,
+                )
+        ):
+            raise nx.NetworkXError("graph builder not properly configured.")
+
+        G = nx.watts_strogatz_graph(n=self.num_nodes, p=self.edge_prob)
+
+        if self.attribute_factory is not None:
+            for node, data in G.nodes(data=True):
+                for k, factory in self.attribute_factory.items():
+                    data[k] = factory()
+
+        return G
