@@ -257,7 +257,7 @@ class ErodsRenyiGraphBuilder:
         ):
             raise nx.NetworkXError("graph builder not properly configured.")
 
-        G = nx.watts_strogatz_graph(n=self.num_nodes, p=self.edge_prob)
+        G = nx.erdos_renyi_graph(n=self.num_nodes, p=self.edge_prob)
 
         if self.attribute_factory is not None:
             for node, data in G.nodes(data=True):
