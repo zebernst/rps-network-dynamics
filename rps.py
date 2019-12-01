@@ -1,4 +1,6 @@
 import matplotlib.pyplot as plt
+import numpy as np
+import seaborn as sns
 import networkx as nx
 import random
 
@@ -37,7 +39,7 @@ def conv_cycle(states: list):
 if __name__ == "__main__":
     graph = (
         ClusteredGraphBuilder()
-        .set_graph_size(nodes=1000)
+        .set_graph_size(nodes=100)
         .with_edge_degree_distribution(uniform, low=1, high=6)
         .with_triangle_degree_distribution(uniform, low=0, high=2)
         .initialize_node_attributes_using({'states': list, 'next': str})
@@ -57,9 +59,6 @@ if __name__ == "__main__":
             data['states'].append(data['next'])
             data['next'] = ""
 
-    nx.draw_kamada_kawai(graph)
-    plt.show()
-
     conv_cycles=[]
     for node, data in graph.nodes(data=True):
         data['conv_cycle'] = conv_cycle(data['states'])
@@ -68,11 +67,49 @@ if __name__ == "__main__":
         if not (data['states'][-1],data['conv_cycle']) in nodesets:
             nodesets[(data['states'][-1],data['conv_cycle'])]=[]
         nodesets[(data['states'][-1],data['conv_cycle'])].append(node)
+    
+    paper_counts=[]
+    rock_counts=[]
+    scissors_counts=[]
+    max_cycle_length = max([state_tuple[1] for state_tuple in nodesets])
+    max_cycle_length = max_cycle_length/3
+    for i in range(1,int(max_cycle_length+1)):
+        cycle_length = i*3
+        cycle_exists=False
+        for state_tuple in nodesets:
+            if state_tuple[1]==cycle_length:
+                cycle_exists=True
+        if not cycle_exists:
+            pass
+        if ('paper', cycle_length) in nodesets:
+            paper_counts.append(len(nodesets[('paper', cycle_length)]))
+        else:
+            paper_counts.append(0)
+        if ('rock', cycle_length) in nodesets:
+            rock_counts.append(len(nodesets[('rock', cycle_length)]))
+        else:
+            rock_counts.append(0)
+        if ('scissors', cycle_length) in nodesets:
+            scissors_counts.append(len(nodesets[('scissors', cycle_length)]))
+        else:
+            scissors_counts.append(0)
+    indices = np.arange((max_cycle_length/3)+1)
+    plot1 = plt.bar(indices, paper_counts)
+    plot2 = plt.bar(indices, rock_counts, bottom=paper_counts)
+    plot3 = plt.bar(indices, scissors_counts, bottom=[sum(x) for x in zip(rock_counts, paper_counts)])
+    plt.xticks(indices, (indices+1)*3)
+    plt.xlabel("Cycle Length")
+    plt.ylabel("Number of Nodes")
+    plt.legend((plot1, plot2, plot3),("paper","rock","scissors"))
+    plt.show()
+    
+    
     degreesets={}
+    max_deg=0
     for index in nodesets:
         degreesets[index]=[]
         for node in nodesets[index]:
             degreesets[index].append((node, graph.degree[node]))
-    for index in degreesets:
-        plt.hist([degtuple[1] for degtuple in degreesets[index]])
-        plt.show()
+            if graph.degree[node]>max_deg:
+                max_deg = graph.degree[node]
+    
