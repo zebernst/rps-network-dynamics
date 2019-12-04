@@ -23,6 +23,14 @@ def optimize_choice(states: list):
         raise Exception("invalid state!")
 
 
+def is_losing(this: str, other: str):
+    return {
+        "rock": other.lower() == "paper",
+        "paper": other.lower() == "scissors",
+        "scissors": other.lower() == "rock",
+    }[this.lower()]
+
+
 def conv_cycle(states: list):
     length = 2
     converged = False
@@ -36,7 +44,7 @@ def conv_cycle(states: list):
     if converged:
         return length - 1
     else:
-        raise Exception("Network did not Converge! Run for more itterations")
+        raise Exception("Network did not Converge! Run for more iterations")
 
 
 if __name__ == "__main__":
@@ -93,7 +101,54 @@ if __name__ == "__main__":
 
     fig = plt.figure(frameon=False, figsize=(14, 8))
 
+
+    def simulate(start, stop):
+        for i in range(start, stop):
+            for node, data in graph.nodes(data=True):
+                neigh = graph[node]
+                if neigh:
+                    data["next"] = optimize_choice([graph.nodes[n]['states'][-1] for n in neigh])
+                else:
+                    data["next"] = data["states"][-1]
+
+            for node, data in graph.nodes(data=True):
+                data['states'].append(data['next'])
+                data['next'] = ""
+            yield i
+
+    def rewire():
+        for node, data in graph.nodes(data=True):
+            winning_neighbors = [n for n in graph[node] if is_losing(data['states'][-1], graph.nodes[n]['states'][-1])]
+            if not winning_neighbors:
+                continue
+            disconnect_from = random.choice(winning_neighbors)
+            possible_new_neighbors = list(set(graph.nodes) - set(graph[node]) - {node})
+            if possible_new_neighbors:
+                graph.remove_edge(node, disconnect_from)
+                graph.add_edge(node, random.choice(possible_new_neighbors))
+
+
+    def run():
+        for i in simulate(0, 25):
+            yield i
+
+        rewire()
+
+        for i in simulate(25, 50):
+            yield i
+
+        rewire()
+
+        for i in simulate(50, 75):
+            yield i
+
+        rewire()
+
+        for i in simulate(75, 100):
+            yield i
+
     def update(idx):
+        print(pos)
         fig.clear()
         nx.draw_networkx_edges(graph, pos=pos)
 
@@ -111,20 +166,13 @@ if __name__ == "__main__":
         plt.yticks([])
         plt.axis('off')
 
-    for _ in range(50):
-        for node, data in graph.nodes(data=True):
-            neigh = graph[node]
-            states = [graph.nodes[n]['states'][-1] for n in neigh]
-            data["next"] = optimize_choice(states)
 
-        for node, data in graph.nodes(data=True):
-            data['states'].append(data['next'])
-            data['next'] = ""
-
+    anim = FuncAnimation(fig, update, frames=run, interval=300, repeat=False)
     # nx.draw_kamada_kawai(graph)
-    anim = FuncAnimation(fig, update, frames=50, interval=400, repeat=False)
     anim.save('rps.mp4')
     plt.close(fig)
+
+    # =========
 
     conv_cycles = []
     for node, data in graph.nodes(data=True):
