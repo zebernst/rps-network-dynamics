@@ -1,26 +1,23 @@
+import random
+from collections import Counter
+
 import matplotlib.pyplot as plt
+import networkx as nx
 import numpy as np
 import seaborn as sns
-import networkx as nx
-import random
-
 from distributions import constant, uniform, zipf
 from factories import *
-from collections import Counter
 from matplotlib.animation import FuncAnimation
+from scipy.stats import poisson
 
 
 def optimize_choice(states: list):
-    most_common = Counter(states).most_common(1)[0][0]
-
-    if most_common.lower() == "rock":
-        return "paper"
-    elif most_common.lower() == "paper":
-        return "scissors"
-    elif most_common.lower() == "scissors":
-        return "rock"
-    else:
-        raise Exception("invalid state!")
+    mode_state = Counter(states).most_common(1)[0][0].lower()
+    return {
+        "rock": "paper",
+        "paper": "scissors",
+        "scissors": "rock",
+    }[mode_state]
 
 
 def is_losing(this: str, other: str):
@@ -31,14 +28,15 @@ def is_losing(this: str, other: str):
     }[this.lower()]
 
 
-def conv_cycle(states: list):
+def identify_convergence(states: list):
     length = 2
     converged = False
-    while not converged and length < 20:
+    while not converged and length <= 21:
         converged = True
         for i in range(1, length + 1):
-            matchstate = states[-i]
-            if states[-(i + length)] != matchstate:
+            state_to_match = states[-i]
+            previous_state_idx = -(length + i)
+            if states[previous_state_idx] != state_to_match:
                 converged = False
         length += 1
     if converged:
@@ -47,174 +45,176 @@ def conv_cycle(states: list):
         raise Exception("Network did not Converge! Run for more iterations")
 
 
-if __name__ == "__main__":
-
-    # graph = (
-    #    ClusteredGraphBuilder()
-    #    .set_dgm_generation(nodes=100)
-    #    .with_edge_degree_distribution(zipf, a=10)
-    #    .with_triangle_degree_distribution(constant, k=0)
-    #    .initialize_node_attributes_using({'states': list, 'next': str})
-    #    .build()
-    # )
-
-    # graph = (
-    #     DorogovtsevGoltsevMendesGraphBuilder()
-    #     .set_dgm_generation(generation=6)
-    #     .initialize_node_attributes_using({'states': list, 'next': str})
-    #     .build()
-    # )
-
-    graph = (
-        BarabasiAlbertGraphBuilder()
-        .set_graph_size(nodes=145)
-        .set_num_attachments(attachments=2)
-        .initialize_node_attributes_using({'states': list, 'next': str})
-        .build()
-    )
-
-    # if traingle is constant(3), convergence to all nodes at the same time
-
-    #    graph = (
-    #        ClusteredGraphBuilder()
-    #        .set_dgm_generation(nodes=100)
-    #        .with_edge_degree_distribution(constant, k=3)
-    #        .with_triangle_degree_distribution(constant, k=3)
-    #        .initialize_node_attributes_using({'states': list, 'next': str})
-    #        .build()
-    #    )
-
-    # show you can get cycles of 6
-
-    # graph = (
-    #     ClusteredGraphBuilder()
-    #     .set_dgm_generation(nodes=100)
-    #     .with_edge_degree_distribution(uniform, low=1, high=6)
-    #     .with_triangle_degree_distribution(uniform, low=0, high=2)
-    #     .initialize_node_attributes_using({'states': list, 'next': str})
-    #     .build()
-    # )
-    pos = nx.kamada_kawai_layout(graph)
-
+def create_convergence_plot():
     for node, data in graph.nodes(data=True):
-        data['states'].append(random.choice(("rock", "paper", "scissors")))
+        data["convergence"] = identify_convergence(data["states"])
 
-    fig = plt.figure(frameon=False, figsize=(14, 8))
-
-
-    def simulate(steps):
-        for step in range(steps):
-            for node, data in graph.nodes(data=True):
-                neigh = graph[node]
-                if neigh:
-                    data["next"] = optimize_choice([graph.nodes[n]['states'][-1] for n in neigh])
-                else:
-                    data["next"] = data["states"][-1]
-
-            for node, data in graph.nodes(data=True):
-                data['states'].append(data['next'])
-                data['next'] = ""
-
-            yield step
-
-    def rewire():
-        for node, data in graph.nodes(data=True):
-            winning_neighbors = [n for n in graph[node] if is_losing(data['states'][-1], graph.nodes[n]['states'][-1])]
-            if not winning_neighbors:
-                continue
-            disconnect_from = random.choice(winning_neighbors)
-            possible_new_neighbors = list(set(graph.nodes) - set(graph[node]) - {node})
-            if possible_new_neighbors:
-                graph.remove_edge(node, disconnect_from)
-                graph.add_edge(node, random.choice(possible_new_neighbors))
-
-    def run():
-        steps = 100
-        rewires = 4
-
-        for step in simulate(steps):
-            if step != 0 and step % (steps // rewires) == 0:
-                rewire()
-
-            yield step
-
-    def update(idx):
-        fig.clear()
-        nx.draw_networkx_edges(graph, pos=pos)
-
-        states = {'rock': [], 'paper': [], 'scissors': []}
-        for node, data in graph.nodes(data=True):
-            state = data['states'][idx]
-            states[state].append(node)
-
-        nx.draw_networkx_nodes(graph, pos=pos, nodelist=states['rock'], node_color='r', label='rock')
-        nx.draw_networkx_nodes(graph, pos=pos, nodelist=states['paper'], node_color='g', label='paper')
-        nx.draw_networkx_nodes(graph, pos=pos, nodelist=states['scissors'], node_color='b', label='scissors')
-
-        plt.legend()
-        plt.xticks([])
-        plt.yticks([])
-        plt.axis('off')
-
-
-    anim = FuncAnimation(fig, func=update, frames=run, interval=300, repeat=False)
-    # nx.draw_kamada_kawai(graph)
-    anim.save('rps.mp4')
-    plt.close(fig)
-
-    # =========
-
-    conv_cycles = []
-    for node, data in graph.nodes(data=True):
-        data['conv_cycle'] = conv_cycle(data['states'])
     nodesets = {}
     for node, data in graph.nodes(data=True):
-        if not (data['states'][-1], data['conv_cycle']) in nodesets:
-            nodesets[(data['states'][-1], data['conv_cycle'])] = []
-        nodesets[(data['states'][-1], data['conv_cycle'])].append(node)
+        key = (data["states"][-1], data["convergence"])
+        if key not in nodesets:
+            nodesets[key] = []
+        nodesets[key].append(node)
 
-    paper_counts = []
-    rock_counts = []
-    scissors_counts = []
-    max_cycle_length = max([state_tuple[1] for state_tuple in nodesets])
-    max_cycle_length = max_cycle_length / 3
-    for i in range(1, int(max_cycle_length + 1)):
+    counts = {
+        "rock": [],
+        "paper": [],
+        "scissors": [],
+    }
+    max_cycle_length = max([state_tuple[1] for state_tuple in nodesets]) // 3
+    for i in range(1, max_cycle_length + 1):
         cycle_length = i * 3
         cycle_exists = False
         for state_tuple in nodesets:
             if state_tuple[1] == cycle_length:
                 cycle_exists = True
-        if not cycle_exists:
-            pass
-        if ('paper', cycle_length) in nodesets:
-            paper_counts.append(len(nodesets[('paper', cycle_length)]))
-        else:
-            paper_counts.append(0)
-        if ('rock', cycle_length) in nodesets:
-            rock_counts.append(len(nodesets[('rock', cycle_length)]))
-        else:
-            rock_counts.append(0)
-        if ('scissors', cycle_length) in nodesets:
-            scissors_counts.append(len(nodesets[('scissors', cycle_length)]))
-        else:
-            scissors_counts.append(0)
-    indices = np.arange(max_cycle_length)
-    plot1 = plt.bar(indices, paper_counts)
-    plot2 = plt.bar(indices, rock_counts, bottom=paper_counts)
-    plot3 = plt.bar(indices, scissors_counts,
-                    bottom=[paper_counts[x] + rock_counts[x] for x in range(len(paper_counts))])
-    plt.xticks(indices, (indices + 1) * 3)
-    plt.xlabel("Cycle Length")
-    plt.ylabel("Number of Nodes")
-    plt.legend((plot1, plot2, plot3), ("paper", "rock", "scissors"))
-    plt.show()
-    plt.close()
+                break
 
-    degreesets = {}
-    max_deg = 0
-    for index in nodesets:
-        degreesets[index] = []
-        for node in nodesets[index]:
-            degreesets[index].append((node, graph.degree[node]))
-            if graph.degree[node] > max_deg:
-                max_deg = graph.degree[node]
+        if not cycle_exists:
+            continue
+
+        counts["paper"].append(
+            len(nodesets[("paper", cycle_length)])
+            if ("paper", cycle_length) in nodesets
+            else 0
+        )
+        counts["rock"].append(
+            len(nodesets[("rock", cycle_length)])
+            if ("rock", cycle_length) in nodesets
+            else 0
+        )
+        counts["scissors"].append(
+            len(nodesets[("scissors", cycle_length)])
+            if ("scissors", cycle_length) in nodesets
+            else 0
+        )
+
+    indices = np.arange(max_cycle_length)
+    fig, ax = plt.subplots()
+    ax.bar(indices, counts["paper"], label="paper")
+    ax.bar(indices, counts["rock"], label="rock", bottom=counts["paper"])
+    ax.bar(
+        indices,
+        counts["scissors"],
+        label="scissors",
+        bottom=[sum(t) for t in zip(counts["paper"], counts["rock"])],
+    )
+
+    ax.set_xticks(indices)
+    ax.set_xticklabels((indices + 1) * 3)
+    ax.set_xlabel("Cycle Length")
+    ax.set_ylabel("Number of Nodes")
+    ax.legend()
+
+    fig.show()
+
+
+def create_degree_dist_plot():
+    nodesets = {}
+    for node, data in graph.nodes(data=True):
+        key = (data["states"][-1], data["convergence"])
+        if key not in nodesets:
+            nodesets[key] = []
+        nodesets[key].append(node)
+
+    fig, ax = plt.subplots()
+    degree_list = sorted(graph.degree[n] for n in graph.nodes)
+    mean_degree = sum(degree_list) / len(degree_list)
+    fit = poisson.pmf(degree_list, mean_degree)
+    ax.plot(degree_list, fit, "-o")
+    ax.hist(degree_list, normed=True)
+    ax.set_xlabel("Degree")
+    ax.set_ylabel("Proportion of Nodes")
+    fig.show()
+
+
+if __name__ == "__main__":
+
+    graph = (
+        BarabasiAlbertGraphBuilder()
+        .set_graph_size(nodes=145)
+        .set_num_attachments(attachments=2)
+        .initialize_node_attributes_using({"states": list, "next": str})
+        .build()
+    )
+
+    for node, data in graph.nodes(data=True):
+        data["states"].append(random.choice(("rock", "paper", "scissors")))
+
+    fig, ax = plt.subplots(frameon=False, figsize=(14, 8))
+    pos = nx.kamada_kawai_layout(graph)
+
+    def run():
+        steps = 100
+        rewires = 4
+
+        def simulate(timesteps):
+            for s in range(timesteps):
+                for n, d in graph.nodes(data=True):
+                    neigh = graph[n]
+                    d["next"] = (
+                        optimize_choice([graph.nodes[n]["states"][-1] for n in neigh])
+                        if neigh
+                        else d["states"][-1]
+                    )
+
+                for n, d in graph.nodes(data=True):
+                    d["states"].append(d["next"])
+                    d["next"] = ""
+
+                yield s
+
+        def rewire():
+            for n, d in graph.nodes(data=True):
+                winning_neighbors = [
+                    n
+                    for n in graph[n]
+                    if is_losing(d["states"][-1], graph.nodes[n]["states"][-1])
+                ]
+                if not winning_neighbors:
+                    continue
+                disconnect_from = random.choice(winning_neighbors)
+                possible_new_neighbors = list(set(graph.nodes) - set(graph[n]) - {n})
+                if possible_new_neighbors:
+                    graph.remove_edge(n, disconnect_from)
+                    graph.add_edge(n, random.choice(possible_new_neighbors))
+
+        for step in simulate(steps):
+            if step != 0 and step % (steps // rewires) == 0:
+                rewire()
+                create_convergence_plot()
+
+            yield step
+
+    def update(idx):
+        ax.clear()
+        nx.draw_networkx_edges(graph, pos=pos)
+
+        states = {"rock": [], "paper": [], "scissors": []}
+        for node, data in graph.nodes(data=True):
+            state = data["states"][idx]
+            states[state].append(node)
+
+        nx.draw_networkx_nodes(
+            graph, pos=pos, nodelist=states["rock"], node_color="r", label="rock"
+        )
+        nx.draw_networkx_nodes(
+            graph, pos=pos, nodelist=states["paper"], node_color="g", label="paper"
+        )
+        nx.draw_networkx_nodes(
+            graph,
+            pos=pos,
+            nodelist=states["scissors"],
+            node_color="b",
+            label="scissors",
+        )
+
+        ax.legend()
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.axis("off")
+
+    anim = FuncAnimation(fig, func=update, frames=run, interval=300, repeat=False)
+    anim.save("rps.mp4")
+
+    create_degree_dist_plot()
