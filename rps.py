@@ -102,8 +102,8 @@ if __name__ == "__main__":
     fig = plt.figure(frameon=False, figsize=(14, 8))
 
 
-    def simulate(start, stop):
-        for i in range(start, stop):
+    def simulate(steps):
+        for step in range(steps):
             for node, data in graph.nodes(data=True):
                 neigh = graph[node]
                 if neigh:
@@ -114,7 +114,8 @@ if __name__ == "__main__":
             for node, data in graph.nodes(data=True):
                 data['states'].append(data['next'])
                 data['next'] = ""
-            yield i
+
+            yield step
 
     def rewire():
         for node, data in graph.nodes(data=True):
@@ -127,47 +128,36 @@ if __name__ == "__main__":
                 graph.remove_edge(node, disconnect_from)
                 graph.add_edge(node, random.choice(possible_new_neighbors))
 
-
     def run():
-        for i in simulate(0, 25):
-            yield i
+        steps = 100
+        rewires = 4
 
-        rewire()
+        for step in simulate(steps):
+            if step != 0 and step % (steps // rewires) == 0:
+                rewire()
 
-        for i in simulate(25, 50):
-            yield i
-
-        rewire()
-
-        for i in simulate(50, 75):
-            yield i
-
-        rewire()
-
-        for i in simulate(75, 100):
-            yield i
+            yield step
 
     def update(idx):
-        print(pos)
         fig.clear()
         nx.draw_networkx_edges(graph, pos=pos)
 
-        nodes = {'rock': [], 'paper': [], 'scissors': []}
+        states = {'rock': [], 'paper': [], 'scissors': []}
         for node, data in graph.nodes(data=True):
-            nodes[data['states'][idx]].append(node)
+            state = data['states'][idx]
+            states[state].append(node)
 
-        nx.draw_networkx_nodes(graph, pos=pos, nodelist=nodes['rock'], node_color='r', label='rock')
-        nx.draw_networkx_nodes(graph, pos=pos, nodelist=nodes['paper'], node_color='g', label='paper')
-        nx.draw_networkx_nodes(graph, pos=pos, nodelist=nodes['scissors'], node_color='b', label='scissors')
+        nx.draw_networkx_nodes(graph, pos=pos, nodelist=states['rock'], node_color='r', label='rock')
+        nx.draw_networkx_nodes(graph, pos=pos, nodelist=states['paper'], node_color='g', label='paper')
+        nx.draw_networkx_nodes(graph, pos=pos, nodelist=states['scissors'], node_color='b', label='scissors')
 
         plt.legend()
-
         plt.xticks([])
         plt.yticks([])
         plt.axis('off')
 
 
-    anim = FuncAnimation(fig, update, frames=run, interval=300, repeat=False)
+    anim = FuncAnimation(fig, func=update, frames=run, interval=300, repeat=False)
     # nx.draw_kamada_kawai(graph)
     anim.save('rps.mp4')
     plt.close(fig)
