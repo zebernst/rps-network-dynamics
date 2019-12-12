@@ -73,7 +73,7 @@ def identify_convergence(states: list):
         raise Exception("Network did not Converge! Run for more iterations")
 
 
-def create_convergence_plot():
+def create_convergence_plot(step):
     for node, data in graph.nodes(data=True):
         data["convergence"] = identify_convergence(data["states"])
 
@@ -128,8 +128,9 @@ def create_convergence_plot():
     ax.set_xlabel("Cycle Length")
     ax.set_ylabel("Number of Nodes")
     ax.legend()
-
-    fig.show()
+    plt.savefig(f"convergence-{step}.png", bbox_inches='tight')
+    fig.clear()
+    # fig.show()
 
 
 def create_degree_dist_plot():
@@ -149,7 +150,6 @@ def create_degree_dist_plot():
     ax.set_xlabel("Degree")
     ax.set_ylabel("Proportion of Nodes")
     plt.savefig('degree_dist.png', bbox_inches='tight')
-    fig.show()
 
 
 def save_reward_distribution(filename):
@@ -229,7 +229,7 @@ if __name__ == "__main__":
         for step in simulate(steps):
             if step != 0 and step % (steps // rewires) == 0:
                 rewire()
-                create_convergence_plot()
+                create_convergence_plot(step)
 
             yield step
 
