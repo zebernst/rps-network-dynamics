@@ -113,7 +113,7 @@ def create_convergence_plot(step):
         )
 
     indices = np.arange(max_cycle_length)
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(num=f'convergence{step}')
     ax.bar(indices, counts["paper"], label="paper")
     ax.bar(indices, counts["rock"], label="rock", bottom=counts["paper"])
     ax.bar(
@@ -129,7 +129,6 @@ def create_convergence_plot(step):
     ax.set_ylabel("Number of Nodes")
     ax.legend()
     plt.savefig(f"convergence-{step}.png", bbox_inches='tight')
-    fig.clear()
     # fig.show()
 
 
@@ -141,7 +140,7 @@ def create_degree_dist_plot():
             nodesets[key] = []
         nodesets[key].append(node)
 
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(num='degreedist')
     degree_list = sorted(graph.degree[n] for n in graph.nodes)
     mean_degree = sum(degree_list) / len(degree_list)
     fit = poisson.pmf(degree_list, mean_degree)
@@ -182,7 +181,7 @@ if __name__ == "__main__":
     for node, data in graph.nodes(data=True):
         data["states"].append(random.choice(("rock", "paper", "scissors")))
 
-    fig, ax = plt.subplots(frameon=False, figsize=(14, 8))
+    fig, ax_ = plt.subplots(frameon=False, figsize=(14, 8), num='anim')
     pos = nx.kamada_kawai_layout(graph)
 
     def run():
@@ -234,7 +233,8 @@ if __name__ == "__main__":
             yield step
 
     def update(idx):
-        ax.clear()
+        plt.figure('anim')
+        ax_.clear()
         nx.draw_networkx_edges(graph, pos=pos)
 
         states = {"rock": [], "paper": [], "scissors": []}
@@ -256,10 +256,10 @@ if __name__ == "__main__":
             label="scissors",
         )
 
-        ax.legend()
-        ax.set_xticks([])
-        ax.set_yticks([])
-        ax.axis("off")
+        ax_.legend()
+        ax_.set_xticks([])
+        ax_.set_yticks([])
+        ax_.axis("off")
 
     save_reward_distribution('before.csv')
     anim = FuncAnimation(fig, func=update, frames=run, interval=300, repeat=False)
