@@ -28,6 +28,22 @@ def is_losing(this: str, other: str):
     }[this.lower()]
 
 
+def is_winning(this: str, other: str):
+    return {
+        "rock": other.lower() == "scissors",
+        "paper": other.lower() == "rock",
+        "scissors": other.lower() == "paper",
+    }[this.lower()]
+
+
+def is_tied(this: str, other: str):
+    return {
+        "rock": other.lower() == "rock",
+        "paper": other.lower() == "paper",
+        "scissors": other.lower() == "scissors",
+    }[this.lower()]
+
+
 def identify_convergence(states: list):
     length = 2
     converged = False
@@ -64,12 +80,7 @@ def create_convergence_plot():
     max_cycle_length = max([state_tuple[1] for state_tuple in nodesets]) // 3
     for i in range(1, max_cycle_length + 1):
         cycle_length = i * 3
-        cycle_exists = False
-        for state_tuple in nodesets:
-            if state_tuple[1] == cycle_length:
-                cycle_exists = True
-                break
-
+        cycle_exists = any(state_tuple[1] == cycle_length for state_tuple in nodesets)
         if not cycle_exists:
             continue
 
@@ -125,6 +136,7 @@ def create_degree_dist_plot():
     ax.hist(degree_list, normed=True)
     ax.set_xlabel("Degree")
     ax.set_ylabel("Proportion of Nodes")
+    plt.savefig('degree_dist.png', bbox_inches='tight')
     fig.show()
 
 
@@ -165,16 +177,22 @@ if __name__ == "__main__":
                 yield s
 
         def rewire():
-            for n, d in graph.nodes(data=True):
+            for n, s in graph.nodes(data='states'):
+                this_state = s[-1]
                 winning_neighbors = [
                     n
                     for n in graph[n]
-                    if is_losing(d["states"][-1], graph.nodes[n]["states"][-1])
+                    if is_losing(this_state, graph.nodes[n]["states"][-1])
                 ]
                 if not winning_neighbors:
                     continue
                 disconnect_from = random.choice(winning_neighbors)
-                possible_new_neighbors = list(set(graph.nodes) - set(graph[n]) - {n})
+
+                beatable_nodes = {u for u, st in graph.nodes(data='states') if is_winning(this_state, st[-1])}
+                tieable_nodes = {u for u, st in graph.nodes(data='states') if is_tied(this_state, st[-1])}
+                possible_new_neighbors = list((beatable_nodes if beatable_nodes else tieable_nodes)
+                                              - set(graph[n])
+                                              - {n})
                 if possible_new_neighbors:
                     graph.remove_edge(n, disconnect_from)
                     graph.add_edge(n, random.choice(possible_new_neighbors))
