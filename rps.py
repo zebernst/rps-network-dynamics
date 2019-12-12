@@ -1,3 +1,4 @@
+import csv
 import random
 from collections import Counter
 
@@ -42,6 +43,17 @@ def is_tied(this: str, other: str):
         "paper": other.lower() == "paper",
         "scissors": other.lower() == "scissors",
     }[this.lower()]
+
+
+def get_outcome(this: str, other: str):
+    if is_winning(this, other):
+        return 'win'
+    elif is_tied(this, other):
+        return 'tie'
+    elif is_losing(this, other):
+        return 'lose'
+    else:
+        return None
 
 
 def identify_convergence(states: list):
@@ -140,6 +152,23 @@ def create_degree_dist_plot():
     fig.show()
 
 
+def save_reward_distribution(filename):
+    rows = []
+    for n, states in graph.nodes(data='states'):
+        dist = {'id': n, 'win': 0, 'tie': 0, 'lose': 0}
+        this_state = states[-1]
+        neighbors = graph[n]
+        for neigh in neighbors:
+            neigh_state = graph.nodes[neigh]['states'][-1]
+            dist[get_outcome(this_state, neigh_state)] += 1
+        rows.append(dist)
+
+    with open(filename, 'w', newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=('id', 'win', 'tie', 'lose'))
+        writer.writeheader()
+        writer.writerows(rows)
+
+
 if __name__ == "__main__":
 
     graph = (
@@ -232,7 +261,9 @@ if __name__ == "__main__":
         ax.set_yticks([])
         ax.axis("off")
 
+    save_reward_distribution('before.csv')
     anim = FuncAnimation(fig, func=update, frames=run, interval=300, repeat=False)
     anim.save("rps.mp4")
+    save_reward_distribution('after.csv')
 
     create_degree_dist_plot()
