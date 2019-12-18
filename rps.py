@@ -5,7 +5,6 @@ from collections import Counter
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
-import seaborn as sns
 from distributions import constant, uniform, zipf
 from factories import *
 from matplotlib.animation import FuncAnimation
